@@ -6,8 +6,8 @@
 #include <LittleFS.h>
 
 // WiFi Configuration
-const char* ssid = "Obergeschoss_ROMANN";
-const char* password = "Sommer2024";
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
 
 // Server Configuration
 WebServer server(80);
