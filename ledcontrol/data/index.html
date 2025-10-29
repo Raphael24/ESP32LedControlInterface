@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 LED Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .connection-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .connect-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Settings Tab */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .strip-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .strip-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .strip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .strip-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #ff4444;
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        input:checked+.toggle-slider {
+            background: #44ff44;
+        }
+
+        input:checked+.toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .form-select option {
+            background: #2d2d44;
+            color: #ffffff;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .export-import {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .export-btn,
+        .import-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .export-btn:hover,
+        .import-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Functions Tab */
+        .functions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .function-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .function-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .function-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00d4ff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 50px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.off {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+        }
+
+        .btn.off:hover {
+            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4);
+        }
+
+        .btn.success {
+            background: linear-gradient(45deg, #44ff44, #66ff66);
+        }
+
+        .btn.success:hover {
+            box-shadow: 0 8px 25px rgba(68, 255, 68, 0.4);
+        }
+
+        /* Status Display */
+        .status-display {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+
+        .status-item {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-label {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .settings-grid,
+            .functions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+            }
+
+            .export-import {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        @keyframes buttonGlow {
+            0% {
+                box-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+            }
+
+            100% {
+                box-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+            }
+        }
+
+        .btn.sending {
+            animation: buttonGlow 0.5s ease-in-out;
+        }
+
+        /* Live Preview */
+        .live-preview {
+            width: 100%;
+            height: 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">ESP32 LED Controller</h1>
+                <div class="connection-info">
+                    <div class="status-indicator">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span id="connectionStatus">Verbindung wird hergestellt...</span>
+                    </div>
+                    <button class="connect-btn" id="connectBtn">Neue Verbindung</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="settings">Einstellungen</button>
+            <button class="nav-tab" data-tab="functions">Funktionen</button>
+        </nav>
+
+        <!-- Settings Tab -->
+        <div class="tab-content active" id="settings">
+            <div class="settings-grid">
+                <!-- Strip 1 -->
+                <div class="strip-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 1</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip1-active">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <form id="strip1-form">
+                        <div class="form-group">
+                            <label class="form-label" for="strip1-leds">Anzahl LEDs (1-2048)</label>
+                            <input type="number" class="form-input" id="strip1-leds" min="1" max="2048" value="144">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip1-pin">Pin</label>
+                            <input type="number" class="form-input" id="strip1-pin" value="2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip1-type">Typ</label>
+                            <select class="form-select" id="strip1-type">
+                                <option value="WS2812">WS2812</option>
+                                <option value="WS2812B" selected>WS2812B</option>
+                                <option value="APA102">APA102</option>
+                                <option value="SK6812">SK6812</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip1-name">Name/Beschreibung (max. 32 Zeichen)</label>
+                            <input type="text" class="form-input" id="strip1-name" maxlength="32"
+                                placeholder="LED Strip 1">
+                        </div>
+                        <button type="button" class="save-btn" onclick="saveStripSettings(1)">Einstellungen
+                            speichern</button>
+                    </form>
+                </div>
+
+                <!-- Strip 2 -->
+                <div class="strip-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 2</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip2-active">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <form id="strip2-form">
+                        <div class="form-group">
+                            <label class="form-label" for="strip2-leds">Anzahl LEDs (1-2048)</label>
+                            <input type="number" class="form-input" id="strip2-leds" min="1" max="2048" value="144">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip2-pin">Pin</label>
+                            <input type="number" class="form-input" id="strip2-pin" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip2-type">Typ</label>
+                            <select class="form-select" id="strip2-type">
+                                <option value="WS2812">WS2812</option>
+                                <option value="WS2812B" selected>WS2812B</option>
+                                <option value="APA102">APA102</option>
+                                <option value="SK6812">SK6812</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip2-name">Name/Beschreibung (max. 32 Zeichen)</label>
+                            <input type="text" class="form-input" id="strip2-name" maxlength="32"
+                                placeholder="LED Strip 2">
+                        </div>
+                        <button type="button" class="save-btn" onclick="saveStripSettings(2)">Einstellungen
+                            speichern</button>
+                    </form>
+                </div>
+
+                <!-- Strip 3 -->
+                <div class="strip-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 3</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip3-active">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <form id="strip3-form">
+                        <div class="form-group">
+                            <label class="form-label" for="strip3-leds">Anzahl LEDs (1-2048)</label>
+                            <input type="number" class="form-input" id="strip3-leds" min="1" max="2048" value="144">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip3-pin">Pin</label>
+                            <input type="number" class="form-input" id="strip3-pin" value="4">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip3-type">Typ</label>
+                            <select class="form-select" id="strip3-type">
+                                <option value="WS2812">WS2812</option>
+                                <option value="WS2812B" selected>WS2812B</option>
+                                <option value="APA102">APA102</option>
+                                <option value="SK6812">SK6812</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="strip3-name">Name/Beschreibung (max. 32 Zeichen)</label>
+                            <input type="text" class="form-input" id="strip3-name" maxlength="32"
+                                placeholder="LED Strip 3">
+                        </div>
+                        <button type="button" class="save-btn" onclick="saveStripSettings(3)">Einstellungen
+                            speichern</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Export/Import -->
+            <div class="export-import">
+                <button class="export-btn" onclick="exportSettings()">Alle Einstellungen exportieren</button>
+                <button class="import-btn" onclick="importSettings()">Einstellungen importieren</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;"
+                    onchange="handleImportFile(event)">
+            </div>
+        </div>
+
+        <!-- Functions Tab -->
+        <div class="tab-content" id="functions">
+            <div class="functions-grid">
+                <!-- Strip 1 Functions -->
+                <div class="function-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 1</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip1-master" onchange="sendCommand(1, 'master', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Farbe</label>
+                        <input type="color" class="color-picker" id="strip1-color" value="#00ff00"
+                            onchange="sendCommand(1, 'color', this.value)"
+                            oninput="sendCommand(1, 'color', this.value)">
+                        <div class="live-preview" id="strip1-preview" style="background-color: #00ff00;"></div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Helligkeit (0-255)</label>
+                        <input type="range" class="slider" id="strip1-brightness" min="0" max="255" value="128"
+                            onchange="sendCommand(1, 'brightness', this.value)"
+                            oninput="sendCommand(1, 'brightness', this.value)">
+                        <span id="strip1-brightness-value">128</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow Effekt</label>
+                        <button class="btn" id="strip1-rainbow" onclick="toggleRainbow(1)">Rainbow Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip1-rainbow-speed" min="0" max="100" value="50"
+                            oninput="sendCommand(1, 'rainbow', {start: document.getElementById('strip1-rainbow').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip1-rainbow-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow 2 Effekt</label>
+                        <button class="btn" id="strip1-rainbow2" onclick="toggleRainbow2(1)">Rainbow 2 Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip1-rainbow2-speed" min="0" max="10000" value="5000"
+                            oninput="sendCommand(1, 'rainbow2', {start: document.getElementById('strip1-rainbow2').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip1-rainbow2-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Flash Effekt</label>
+                        <button class="btn" id="strip1-flash" onclick="toggleFlash(1)">Flash Start</button>
+                        <label class="control-label">Flash Farbe</label>
+                        <input type="color" class="color-picker" id="strip1-flash-color" value="#ff0000"
+                            oninput="sendCommand(1, 'flash', {start: document.getElementById('strip1-flash').textContent.includes('Stop'), color: this.value, frequency: parseInt(document.getElementById('strip1-flash-freq').value)})">
+                        <label class="control-label">Frequenz (Hz)</label>
+                        <input type="range" class="slider" id="strip1-flash-freq" min="1" max="20" value="5"
+                            oninput="sendCommand(1, 'flash', {start: document.getElementById('strip1-flash').textContent.includes('Stop'), color: document.getElementById('strip1-flash-color').value, frequency: parseInt(this.value)})">
+                        <span id="strip1-flash-freq-value">5</span>
+                    </div>
+                    <button class="btn off" onclick="sendCommand(1, 'off')">Aus</button>
+                </div>
+
+                <!-- Strip 2 Functions -->
+                <div class="function-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 2</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip2-master" onchange="sendCommand(2, 'master', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Farbe</label>
+                        <input type="color" class="color-picker" id="strip2-color" value="#0000ff"
+                            onchange="sendCommand(2, 'color', this.value)"
+                            oninput="sendCommand(2, 'color', this.value)">
+                        <div class="live-preview" id="strip2-preview" style="background-color: #0000ff;"></div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Helligkeit (0-255)</label>
+                        <input type="range" class="slider" id="strip2-brightness" min="0" max="255" value="128"
+                            onchange="sendCommand(2, 'brightness', this.value)"
+                            oninput="sendCommand(2, 'brightness', this.value)">
+                        <span id="strip2-brightness-value">128</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow Effekt</label>
+                        <button class="btn" id="strip2-rainbow" onclick="toggleRainbow(2)">Rainbow Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip2-rainbow-speed" min="0" max="100" value="50"
+                            oninput="sendCommand(2, 'rainbow', {start: document.getElementById('strip2-rainbow').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip2-rainbow-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow 2 Effekt</label>
+                        <button class="btn" id="strip2-rainbow2" onclick="toggleRainbow2(1)">Rainbow 2 Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip2-rainbow2-speed" min="0" max="10000" value="5000"
+                            oninput="sendCommand(1, 'rainbow2', {start: document.getElementById('strip2-rainbow2').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip2-rainbow2-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Flash Effekt</label>
+                        <button class="btn" id="strip2-flash" onclick="toggleFlash(2)">Flash Start</button>
+                        <label class="control-label">Flash Farbe</label>
+                        <input type="color" class="color-picker" id="strip2-flash-color" value="#ff0000"
+                            oninput="sendCommand(2, 'flash', {start: document.getElementById('strip2-flash').textContent.includes('Stop'), color: this.value, frequency: parseInt(document.getElementById('strip2-flash-freq').value)})">
+                        <label class="control-label">Frequenz (Hz)</label>
+                        <input type="range" class="slider" id="strip2-flash-freq" min="1" max="20" value="5"
+                            oninput="sendCommand(2, 'flash', {start: document.getElementById('strip2-flash').textContent.includes('Stop'), color: document.getElementById('strip2-flash-color').value, frequency: parseInt(this.value)})">
+                        <span id="strip2-flash-freq-value">5</span>
+                    </div>
+                    <button class="btn off" onclick="sendCommand(2, 'off')">Aus</button>
+                </div>
+
+                <!-- Strip 3 Functions -->
+                <div class="function-card">
+                    <div class="strip-header">
+                        <h3 class="strip-title">LED Strip 3</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strip3-master" onchange="sendCommand(3, 'master', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Farbe</label>
+                        <input type="color" class="color-picker" id="strip3-color" value="#ff00ff"
+                            onchange="sendCommand(3, 'color', this.value)"
+                            oninput="sendCommand(3, 'color', this.value)">
+                        <div class="live-preview" id="strip3-preview" style="background-color: #ff00ff;"></div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Helligkeit (0-255)</label>
+                        <input type="range" class="slider" id="strip3-brightness" min="0" max="255" value="128"
+                            onchange="sendCommand(3, 'brightness', this.value)"
+                            oninput="sendCommand(3, 'brightness', this.value)">
+                        <span id="strip3-brightness-value">128</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow Effekt</label>
+                        <button class="btn" id="strip3-rainbow" onclick="toggleRainbow(3)">Rainbow Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip3-rainbow-speed" min="0" max="100" value="50"
+                            oninput="sendCommand(3, 'rainbow', {start: document.getElementById('strip3-rainbow').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip3-rainbow-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Rainbow 2 Effekt</label>
+                        <button class="btn" id="strip3-rainbow2" onclick="toggleRainbow2(1)">Rainbow 2 Start</button>
+                        <label class="control-label">Geschwindigkeit (0-100)</label>
+                        <input type="range" class="slider" id="strip3-rainbow2-speed" min="0" max="10000" value="5000"
+                            oninput="sendCommand(1, 'rainbow2', {start: document.getElementById('strip3-rainbow2').textContent.includes('Stop'), speed: parseInt(this.value)})">
+                        <span id="strip3-rainbow2-speed-value">50</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Flash Effekt</label>
+                        <button class="btn" id="strip3-flash" onclick="toggleFlash(3)">Flash Start</button>
+                        <label class="control-label">Flash Farbe</label>
+                        <input type="color" class="color-picker" id="strip3-flash-color" value="#ff0000"
+                            oninput="sendCommand(3, 'flash', {start: document.getElementById('strip3-flash').textContent.includes('Stop'), color: this.value, frequency: parseInt(document.getElementById('strip3-flash-freq').value)})">
+                        <label class="control-label">Frequenz (Hz)</label>
+                        <input type="range" class="slider" id="strip3-flash-freq" min="1" max="20" value="5"
+                            oninput="sendCommand(3, 'flash', {start: document.getElementById('strip3-flash').textContent.includes('Stop'), color: document.getElementById('strip3-flash-color').value, frequency: parseInt(this.value)})">
+                        <span id="strip3-flash-freq-value">5</span>
+                    </div>
+                    <button class="btn off" onclick="sendCommand(3, 'off')">Aus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Display -->
+    <div class="status-display" id="statusDisplay">
+        <div class="status-item">
+            <span class="status-label">Verbindung:</span> <span id="connectionType">WebSocket</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Letzter Befehl:</span> <span id="lastCommand">-</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Antwort:</span> <span id="serverResponse">-</span>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let websocket = null;
+        let useWebSocket = true;
+        let debounceTimer = null;
+        let rainbowStates = [false, false, false];
+        let rainbow2States = [false, false, false];
+        let flashStates = [false, false, false];
+
+        // Debouncing for real-time updates
+        let lastUpdateTime = 0;
+        const UPDATE_INTERVAL = 20; // 20ms minimum between updates
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // Load saved settings
+            loadSettings();
+
+            // Load settings from ESP32
+            loadSettingsFromESP32();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Try to connect via WebSocket first
+            connectWebSocket();
+
+            // Update brightness display values
+            updateBrightnessDisplays();
+        }
+
+        function setupEventListeners() {
+            // Tab navigation
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function () {
+                    switchTab(this.dataset.tab);
+                });
+            });
+
+            // Connect button
+            document.getElementById('connectBtn').addEventListener('click', function () {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.close();
+                }
+                connectWebSocket();
+            });
+
+            // Color picker updates
+            document.querySelectorAll('.color-picker').forEach(picker => {
+                picker.addEventListener('change', function () {
+                    const stripNum = this.id.split('-')[0].replace('strip', '');
+                    const preview = document.getElementById(`strip${stripNum}-preview`);
+                    if (preview) {
+                        preview.style.backgroundColor = this.value;
+                    }
+                });
+            });
+
+            // Brightness sliders
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                if (slider.id.includes('brightness')) {
+                    slider.addEventListener('input', function () {
+                        const stripNum = this.id.split('-')[0].replace('strip', '');
+                        const valueDisplay = document.getElementById(`strip${stripNum}-brightness-value`);
+                        if (valueDisplay) {
+                            valueDisplay.textContent = this.value;
+                        }
+                    });
+                }
+                if (slider.id.includes('rainbow-speed')) {
+                    slider.addEventListener('input', function () {
+                        const stripNum = this.id.split('-')[0].replace('strip', '');
+                        const valueDisplay = document.getElementById(`strip${stripNum}-rainbow-speed-value`);
+                        if (valueDisplay) {
+                            valueDisplay.textContent = this.value;
+                        }
+                    });
+                }
+                if (slider.id.includes('rainbow2-speed')) {
+                    slider.addEventListener('input', function () {
+                        const stripNum = this.id.split('-')[0].replace('strip', '');
+                        const valueDisplay = document.getElementById(`strip${stripNum}-rainbow2-speed-value`);
+                        if (valueDisplay) {
+                            valueDisplay.textContent = this.value;
+                        }
+                    });
+                }
+                if (slider.id.includes('flash')) {
+                    slider.addEventListener('input', function () {
+                        const stripNum = this.id.split('-')[0].replace('strip', '');
+                        const valueDisplay = document.getElementById(`strip${stripNum}-flash-freq-value`);
+                        if (valueDisplay) {
+                            valueDisplay.textContent = this.value;
+                        }
+                    });
+                }
+            });
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            try {
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = function () {
+                    updateConnectionStatus('WebSocket verbunden', true);
+                    useWebSocket = true;
+                };
+
+                websocket.onmessage = function (event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        updateServerResponse('OK', data);
+                    } catch (e) {
+                        updateServerResponse('Fehler', event.data);
+                    }
+                };
+
+                websocket.onclose = function () {
+                    updateConnectionStatus('WebSocket getrennt', false);
+                    useWebSocket = false;
+                    // Fallback to HTTP after 2 seconds
+                    setTimeout(() => {
+                        if (!useWebSocket) {
+                            updateConnectionStatus('HTTP Fallback aktiv', true);
+                        }
+                    }, 2000);
+                };
+
+                websocket.onerror = function () {
+                    updateConnectionStatus('WebSocket Fehler', false);
+                    useWebSocket = false;
+                };
+
+            } catch (e) {
+                updateConnectionStatus('WebSocket nicht verfügbar', false);
+                useWebSocket = false;
+            }
+        }
+
+        function sendCommand(stripNum, command, value = null) {
+            const now = Date.now();
+
+            // Check if enough time has passed since last update
+            if (now - lastUpdateTime < UPDATE_INTERVAL) {
+                return; // Skip this update
+            }
+
+            lastUpdateTime = now;
+
+            const payload = {
+                strip: stripNum,
+                command: command,
+                value: value,
+                timestamp: now
+            };
+
+            updateLastCommand(`${stripNum}: ${command}${value ? ' = ' + value : ''}`);
+
+            if (useWebSocket && websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify(payload));
+            } else {
+                // Fallback to HTTP
+                sendHttpCommand(payload);
+            }
+        }
+
+        function sendHttpCommand(payload) {
+            fetch('/api/led', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    updateServerResponse('OK', data);
+                })
+                .catch(error => {
+                    updateServerResponse('Fehler', error.message);
+                });
+        }
+
+        function updateConnectionStatus(status, connected) {
+            document.getElementById('connectionStatus').textContent = status;
+            document.getElementById('connectionType').textContent = useWebSocket ? 'WebSocket' : 'HTTP';
+            const statusDot = document.getElementById('statusDot');
+            if (connected) {
+                statusDot.classList.add('connected');
+            } else {
+                statusDot.classList.remove('connected');
+            }
+        }
+
+        function updateLastCommand(command) {
+            document.getElementById('lastCommand').textContent = command;
+        }
+
+        function updateServerResponse(status, data) {
+            document.getElementById('serverResponse').textContent = `${status}: ${JSON.stringify(data)}`;
+        }
+
+        function saveStripSettings(stripNum) {
+            const settings = {
+                active: document.getElementById(`strip${stripNum}-active`).checked,
+                leds: parseInt(document.getElementById(`strip${stripNum}-leds`).value),
+                pin: parseInt(document.getElementById(`strip${stripNum}-pin`).value),
+                type: document.getElementById(`strip${stripNum}-type`).value,
+                name: document.getElementById(`strip${stripNum}-name`).value
+            };
+
+            // Validation
+            if (settings.leds < 1 || settings.leds > 2048) {
+                alert('Anzahl LEDs muss zwischen 1 und 2048 liegen!');
+                return;
+            }
+
+            if (settings.name.length > 32) {
+                alert('Name darf maximal 32 Zeichen haben!');
+                return;
+            }
+
+            // Save to localStorage
+            localStorage.setItem(`strip${stripNum}`, JSON.stringify(settings));
+
+            // Save to ESP32
+            saveSettingsToESP32();
+
+            // Visual feedback
+            const button = event.target;
+            button.classList.add('success');
+            button.textContent = 'Gespeichert!';
+            setTimeout(() => {
+                button.classList.remove('success');
+                button.textContent = 'Einstellungen speichern';
+            }, 2000);
+        }
+
+        function saveSettingsToESP32() {
+            const strips = [];
+            for (let i = 1; i <= 3; i++) {
+                const saved = localStorage.getItem(`strip${i}`);
+                if (saved) {
+                    strips.push(JSON.parse(saved));
+                } else {
+                    strips.push(null);
+                }
+            }
+
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ strips: strips })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Settings saved to ESP32:', data);
+                })
+                .catch(error => {
+                    console.error('Error saving settings:', error);
+                });
+        }
+
+        function loadSettingsFromESP32() {
+            fetch('/api/settings')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Settings loaded from ESP32:', data);
+                    // Update form fields with ESP32 settings
+                    for (let i = 1; i <= 3; i++) {
+                        if (data.strips && data.strips[i - 1]) {
+                            const strip = data.strips[i - 1];
+                            document.getElementById(`strip${i}-active`).checked = strip.active;
+                            document.getElementById(`strip${i}-leds`).value = strip.numLeds;
+                            document.getElementById(`strip${i}-pin`).value = strip.pin;
+                            document.getElementById(`strip${i}-type`).value = strip.type;
+                            document.getElementById(`strip${i}-name`).value = strip.name;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading settings:', error);
+                });
+        }
+
+        function loadSettings() {
+            for (let i = 1; i <= 3; i++) {
+                const saved = localStorage.getItem(`strip${i}`);
+                if (saved) {
+                    try {
+                        const settings = JSON.parse(saved);
+                        document.getElementById(`strip${i}-active`).checked = settings.active;
+                        document.getElementById(`strip${i}-leds`).value = settings.leds;
+                        document.getElementById(`strip${i}-pin`).value = settings.pin;
+                        document.getElementById(`strip${i}-type`).value = settings.type;
+                        document.getElementById(`strip${i}-name`).value = settings.name;
+                    } catch (e) {
+                        console.error(`Error loading settings for strip ${i}:`, e);
+                    }
+                }
+            }
+        }
+
+        function exportSettings() {
+            const allSettings = {};
+            for (let i = 1; i <= 3; i++) {
+                const saved = localStorage.getItem(`strip${i}`);
+                if (saved) {
+                    allSettings[`strip${i}`] = JSON.parse(saved);
+                }
+            }
+
+            const dataStr = JSON.stringify(allSettings, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'led_settings.json';
+            link.click();
+
+            URL.revokeObjectURL(url);
+        }
+
+        function importSettings() {
+            document.getElementById('importFile').click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const settings = JSON.parse(e.target.result);
+                    for (const [key, value] of Object.entries(settings)) {
+                        localStorage.setItem(key, JSON.stringify(value));
+                    }
+                    loadSettings();
+                    alert('Einstellungen erfolgreich importiert!');
+                } catch (error) {
+                    alert('Fehler beim Importieren der Einstellungen!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleRainbow(stripNum) {
+            const button = document.getElementById(`strip${stripNum}-rainbow`);
+            const speed = document.getElementById(`strip${stripNum}-rainbow-speed`).value;
+
+            rainbowStates[stripNum - 1] = !rainbowStates[stripNum - 1];
+
+            if (rainbowStates[stripNum - 1]) {
+                button.textContent = 'Rainbow Stop';
+                button.classList.add('success');
+                sendCommand(stripNum, 'rainbow', { start: true, speed: parseInt(speed) });
+            } else {
+                button.textContent = 'Rainbow Start';
+                button.classList.remove('success');
+                sendCommand(stripNum, 'rainbow', { start: false });
+            }
+        }
+
+        function toggleRainbow2(stripNum) {
+            const button = document.getElementById(`strip${stripNum}-rainbow2`);
+            const speed = document.getElementById(`strip${stripNum}-rainbow2-speed`).value;
+
+            rainbow2States[stripNum - 1] = !rainbow2States[stripNum - 1];
+
+            if (rainbow2States[stripNum - 1]) {
+                button.textContent = 'Rainbow2 Stop';
+                button.classList.add('success');
+                sendCommand(stripNum, 'rainbow2', { start: true, speed: parseInt(speed) });
+            } else {
+                button.textContent = 'Rainbow2 Start';
+                button.classList.remove('success');
+                sendCommand(stripNum, 'rainbow2', { start: false });
+            }
+        }
+
+        function toggleFlash(stripNum) {
+            const button = document.getElementById(`strip${stripNum}-flash`);
+            const color = document.getElementById(`strip${stripNum}-flash-color`).value;
+            const frequency = document.getElementById(`strip${stripNum}-flash-freq`).value;
+
+            flashStates[stripNum - 1] = !flashStates[stripNum - 1];
+
+            if (flashStates[stripNum - 1]) {
+                button.textContent = 'Flash Stop';
+                button.classList.add('success');
+                sendCommand(stripNum, 'flash', { start: true, color: color, frequency: parseInt(frequency) });
+            } else {
+                button.textContent = 'Flash Start';
+                button.classList.remove('success');
+                sendCommand(stripNum, 'flash', { start: false });
+            }
+        }
+
+        function updateBrightnessDisplays() {
+            for (let i = 1; i <= 3; i++) {
+                const slider = document.getElementById(`strip${i}-brightness`);
+                const display = document.getElementById(`strip${i}-brightness-value`);
+                if (slider && display) {
+                    display.textContent = slider.value;
+                }
+            }
+        }
+
+        // Debounced input handling
+        function debounce(func, wait) {
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(debounceTimer);
+                    func(...args);
+                };
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(later, wait);
+            };
+        }
+
+        // Add debounced input handlers
+        document.querySelectorAll('input[type="number"], input[type="text"]').forEach(input => {
+            input.addEventListener('input', debounce(function () {
+                // Auto-save on input change with debounce
+                const id = this.id;
+                if (!id || !id.includes('strip')) {
+                    console.warn("Input ohne ID erkannt:", this);
+                    return;
+                }
+
+                const stripNum = id.split('-')[0].replace('strip', '');
+                if (!stripNum || isNaN(stripNum)) return;
+
+                saveStripSettings(parseInt(stripNum));
+            }, 250));
+        });
+    </script>
+</body>
+
+</html>
