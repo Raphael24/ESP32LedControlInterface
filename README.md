@@ -57,7 +57,7 @@ This project is open-source — feel free to modify and improve!
 
 ---
 
-![UI Screenshot](led_settings.png)
+![UI Screenshot](led_Settings.png)
 
 ![UI Screenshot](led_functions.png)
 
