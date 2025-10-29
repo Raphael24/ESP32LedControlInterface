@@ -1,5 +1,6 @@
 # ESP32LedControlInterface
 ESP32LedControlInterface lets you control up to 3 LED strips on an ESP32 via a web interface. Supports WS2812/Neopixel LEDs with customizable effects like Rainbow, Flash, and Full Color. Configure pins, LED count, brightness, and speed directly from your browser. Perfect for DIY lighting projects!
+
 ---
 
 ## ✨ Features
@@ -56,6 +57,8 @@ This project is open-source — feel free to modify and improve!
 
 ---
 
-## 🤝 Contributions
-Pull requests are welcome! 😊
+![UI Screenshot](led_settings.png)
+
+![UI Screenshot](led_functions.png)
+
 
